@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { toast } from 'react-toastify'; // 👈 for notification
+import { toast } from 'react-toastify';
 
 const LeaveHistoryPage = () => {
   const [leaves, setLeaves] = useState([]);
@@ -12,11 +12,11 @@ const LeaveHistoryPage = () => {
         const res = await axios.get(`http://localhost:5000/api/leave/user/${userData?.user?._id}`);
         setLeaves(res.data);
 
-        // 🔔 Show toast for latest leave status (if not pending)
-        const latestLeave = res.data[res.data.length - 1];
-        if (latestLeave && latestLeave.status !== 'Pending') {
-          toast.info(`Your latest leave is ${latestLeave.status}`, {
-            toastId: 'latest-leave-status'
+        // Show toast if latest leave is Approved/Rejected
+        const latest = res.data[0];
+        if (latest && latest.status !== 'Pending') {
+          toast.info(`Your latest leave is ${latest.status}`, {
+            toastId: 'latest-leave-status',
           });
         }
       } catch (error) {
@@ -44,6 +44,7 @@ const LeaveHistoryPage = () => {
                   <th className="p-3">Type</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">Reason</th>
+                  <th className="p-3">Reliever</th> {/* 👈 New column */}
                 </tr>
               </thead>
               <tbody>
@@ -69,6 +70,7 @@ const LeaveHistoryPage = () => {
                       </span>
                     </td>
                     <td className="p-3 break-words">{leave.reason || '—'}</td>
+                    <td className="p-3">{leave.reliever || '—'}</td> {/* 👈 Show reliever */}
                   </tr>
                 ))}
               </tbody>
