@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 const AdminPanelPage = () => {
   const [leaves, setLeaves] = useState([]);
@@ -20,6 +18,10 @@ const AdminPanelPage = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
 
   const fetchLeaves = async () => {
     try {
@@ -59,6 +61,7 @@ const AdminPanelPage = () => {
     }
 
     setFilteredLeaves(filtered);
+    setCurrentPage(1); // reset to first page on filter change
   }, [searchTerm, statusFilter, leaves]);
 
   const updateStatus = async (id, newStatus) => {
@@ -102,30 +105,11 @@ const AdminPanelPage = () => {
     saveAs(file, 'LeaveReport.xlsx');
   };
 
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Leave Report', 14, 15);
-
-    const tableColumn = ['Name', 'Route', 'Dates', 'Type', 'Reason', 'Reliever', 'Status'];
-
-    const tableRows = filteredLeaves.map((leave) => [
-      leave.fullName,
-      `${leave.routeFrom} → ${leave.routeTo}`,
-      `${new Date(leave.fromDate).toLocaleDateString()} - ${new Date(leave.toDate).toLocaleDateString()}`,
-      leave.leaveType,
-      leave.reason || '',
-      leave.reliever || '',
-      leave.status,
-    ]);
-
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 20,
-    });
-
-    doc.save('LeaveReport.pdf');
-  };
+  // Pagination logic
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = filteredLeaves.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(filteredLeaves.length / recordsPerPage);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -171,24 +155,16 @@ const AdminPanelPage = () => {
             <option value="Approved">Approved</option>
             <option value="Rejected">Rejected</option>
           </select>
-          <div className="flex gap-2">
-            <button
-              onClick={exportToExcel}
-              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-            >
-              Export Excel
-            </button>
-            <button
-              onClick={exportToPDF}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-            >
-              Export PDF
-            </button>
-          </div>
+          <button
+            onClick={exportToExcel}
+            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+          >
+            Export Excel
+          </button>
         </div>
 
         {/* Table */}
-        {filteredLeaves.length === 0 ? (
+        {currentRecords.length === 0 ? (
           <p className="text-center text-gray-500">No matching leave records.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -206,7 +182,7 @@ const AdminPanelPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredLeaves.map((leave) => (
+                {currentRecords.map((leave) => (
                   <tr key={leave._id} className="border-t text-center">
                     <td className="p-2">{leave.fullName}</td>
                     <td className="p-2">{leave.routeFrom} → {leave.routeTo}</td>
@@ -267,6 +243,27 @@ const AdminPanelPage = () => {
                 ))}
               </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            <div className="flex justify-center mt-4 gap-4">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              <span className="self-center">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
