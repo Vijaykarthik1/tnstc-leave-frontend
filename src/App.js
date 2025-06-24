@@ -8,6 +8,7 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProfileUploadPage from './pages/ProfileUploadPage';
 import ProfilePage from './pages/ProfilePage';
+import LeaveAnalyticsPage from './pages/LeaveAnalayticsPage';
 // import ProtectedAdminRoute from './ProtectedAdminRoute';
 import MainLayout from './components/MainLayout'; // <-- new
 
@@ -52,6 +53,13 @@ function App() {
         />
         <Route path="/upload-profile" element={<ProfileUploadPage />} />
         <Route path="/profile" element={<MainLayout><ProfilePage /></MainLayout>} />
+        <Route path="/analytics" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <LeaveAnalyticsPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
       </Routes>
     </BrowserRouter>
   );
