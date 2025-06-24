@@ -6,22 +6,19 @@ import { saveAs } from 'file-saver';
 const AdminPanelPage = () => {
   const [leaves, setLeaves] = useState([]);
   const [filteredLeaves, setFilteredLeaves] = useState([]);
-  const [summary, setSummary] = useState({
-    total: 0,
-    approved: 0,
-    pending: 0,
-    rejected: 0,
-  });
+  const [summary, setSummary] = useState({ total: 0, approved: 0, pending: 0, rejected: 0 });
 
   const [relievers, setRelievers] = useState({});
   const relieverOptions = ['Ravi Kumar', 'Sathish M', 'Arunraj D', 'Karthick S'];
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
+
+  // User popup
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userStats, setUserStats] = useState(null);
 
   const fetchLeaves = async () => {
     try {
@@ -40,6 +37,19 @@ const AdminPanelPage = () => {
     } catch (err) {
       console.error('Error fetching summary:', err);
     }
+  };
+
+  const fetchUserStats = (userId) => {
+    const userLeaves = leaves.filter((leave) => leave.userId === userId);
+    const totalApplied = userLeaves.length;
+    const approved = userLeaves.filter((l) => l.status === 'Approved').length;
+    const rejected = userLeaves.filter((l) => l.status === 'Rejected').length;
+    setUserStats({ totalApplied, approved, rejected });
+  };
+
+  const openUserPopup = (leave) => {
+    setSelectedUser(leave);
+    fetchUserStats(leave.userId);
   };
 
   useEffect(() => {
@@ -61,7 +71,7 @@ const AdminPanelPage = () => {
     }
 
     setFilteredLeaves(filtered);
-    setCurrentPage(1); // reset to first page on filter change
+    setCurrentPage(1);
   }, [searchTerm, statusFilter, leaves]);
 
   const updateStatus = async (id, newStatus) => {
@@ -90,7 +100,9 @@ const AdminPanelPage = () => {
     const data = filteredLeaves.map((leave) => ({
       Name: leave.fullName,
       Route: `${leave.routeFrom} → ${leave.routeTo}`,
-      Dates: `${new Date(leave.fromDate).toLocaleDateString()} - ${new Date(leave.toDate).toLocaleDateString()}`,
+      Dates: `${new Date(leave.fromDate).toLocaleDateString()} - ${new Date(
+        leave.toDate
+      ).toLocaleDateString()}`,
       Type: leave.leaveType,
       Reason: leave.reason,
       Status: leave.status,
@@ -105,7 +117,6 @@ const AdminPanelPage = () => {
     saveAs(file, 'LeaveReport.xlsx');
   };
 
-  // Pagination logic
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = filteredLeaves.slice(indexOfFirstRecord, indexOfLastRecord);
@@ -118,22 +129,16 @@ const AdminPanelPage = () => {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 text-white text-center">
-          <div className="bg-blue-600 p-4 rounded-lg shadow">
-            <h3 className="text-xl font-bold">{summary.total}</h3>
-            <p>Total Requests</p>
-          </div>
-          <div className="bg-green-500 p-4 rounded-lg shadow">
-            <h3 className="text-xl font-bold">{summary.approved}</h3>
-            <p>Approved</p>
-          </div>
-          <div className="bg-yellow-500 p-4 rounded-lg shadow">
-            <h3 className="text-xl font-bold">{summary.pending}</h3>
-            <p>Pending</p>
-          </div>
-          <div className="bg-red-500 p-4 rounded-lg shadow">
-            <h3 className="text-xl font-bold">{summary.rejected}</h3>
-            <p>Rejected</p>
-          </div>
+          {['Total Requests', 'Approved', 'Pending', 'Rejected'].map((label, i) => {
+            const color = ['bg-blue-600', 'bg-green-500', 'bg-yellow-500', 'bg-red-500'][i];
+            const value = [summary.total, summary.approved, summary.pending, summary.rejected][i];
+            return (
+              <div key={label} className={`${color} p-4 rounded-lg shadow`}>
+                <h3 className="text-xl font-bold">{value}</h3>
+                <p>{label}</p>
+              </div>
+            );
+          })}
         </div>
 
         {/* Filters */}
@@ -171,7 +176,7 @@ const AdminPanelPage = () => {
             <table className="table-auto w-full border text-sm">
               <thead className="bg-indigo-100 text-indigo-700">
                 <tr>
-                  <th className="p-2">Name</th>
+                  <th className="p-2">User</th>
                   <th className="p-2">Route</th>
                   <th className="p-2">Dates</th>
                   <th className="p-2">Type</th>
@@ -184,7 +189,15 @@ const AdminPanelPage = () => {
               <tbody>
                 {currentRecords.map((leave) => (
                   <tr key={leave._id} className="border-t text-center">
-                    <td className="p-2">{leave.fullName}</td>
+                    <td className="p-2 flex items-center gap-2 justify-center">
+                      <img
+                        src={leave.profilePhoto || 'https://ui-avatars.com/api/?name=' + leave.fullName}
+                        className="w-8 h-8 rounded-full cursor-pointer border"
+                        alt="profile"
+                        onClick={() => openUserPopup(leave)}
+                      />
+                      <span>{leave.fullName}</span>
+                    </td>
                     <td className="p-2">{leave.routeFrom} → {leave.routeTo}</td>
                     <td className="p-2">
                       {new Date(leave.fromDate).toLocaleDateString()} -{' '}
@@ -244,7 +257,7 @@ const AdminPanelPage = () => {
               </tbody>
             </table>
 
-            {/* Pagination Controls */}
+            {/* Pagination */}
             <div className="flex justify-center mt-4 gap-4">
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -253,9 +266,7 @@ const AdminPanelPage = () => {
               >
                 Previous
               </button>
-              <span className="self-center">
-                Page {currentPage} of {totalPages}
-              </span>
+              <span className="self-center">Page {currentPage} of {totalPages}</span>
               <button
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                 className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
@@ -267,6 +278,33 @@ const AdminPanelPage = () => {
           </div>
         )}
       </div>
+
+      {/* User Info Popup */}
+      {selectedUser && userStats && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+          <div className="bg-white rounded-xl p-6 w-80 text-center shadow-xl relative">
+            <button
+              onClick={() => setSelectedUser(null)}
+              className="absolute top-2 right-3 text-gray-500 text-xl font-bold"
+            >
+              ×
+            </button>
+            <img
+              src={selectedUser.profilePhoto || 'https://ui-avatars.com/api/?name=' + selectedUser.fullName}
+              className="w-24 h-24 rounded-full mx-auto mb-4 border"
+              alt="User"
+            />
+            <h3 className="text-lg font-bold">{selectedUser.fullName}</h3>
+            <p className="text-sm text-gray-600 mb-4 capitalize">{selectedUser.role}</p>
+
+            <div className="text-left space-y-1 text-sm">
+              <p>Total Applied: <strong>{userStats.totalApplied}</strong></p>
+              <p>Approved: <strong>{userStats.approved}</strong></p>
+              <p>Rejected: <strong>{userStats.rejected}</strong></p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -22,14 +22,20 @@ const LoginPage = () => {
   }, [navigate]);
 
   // 👇 Call this after login
-  const handleLogin = (userData) => {
-    setUser(userData);
-    if (userData.role === 'driver' || userData.role === 'conductor') {
-      navigate('/apply-leave');
-    } else if (userData.role === 'admin') {
-      navigate('/admin');
-    }
-  };
+const handleLogin = (userData) => {
+  setUser(userData);
+
+  if (!userData.profilePhoto) {
+    return navigate('/upload-profile'); // 👈 redirect to upload
+  }
+
+  if (userData.role === 'driver' || userData.role === 'conductor') {
+    navigate('/apply-leave');
+  } else if (userData.role === 'admin') {
+    navigate('/admin');
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">

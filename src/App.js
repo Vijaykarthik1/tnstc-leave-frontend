@@ -6,6 +6,8 @@ import LeaveHistoryPage from './pages/LeaveHistoryPage';
 import AdminPanelPage from './pages/AdminPanelPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import ProfileUploadPage from './pages/ProfileUploadPage';
+import ProfilePage from './pages/ProfilePage';
 // import ProtectedAdminRoute from './ProtectedAdminRoute';
 import MainLayout from './components/MainLayout'; // <-- new
 
@@ -48,6 +50,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/upload-profile" element={<ProfileUploadPage />} />
+        <Route path="/profile" element={<MainLayout><ProfilePage /></MainLayout>} />
       </Routes>
     </BrowserRouter>
   );
