@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const AdminPanelPage = () => {
   const [leaves, setLeaves] = useState([]);
@@ -12,30 +14,21 @@ const AdminPanelPage = () => {
     rejected: 0,
   });
 
-  const [relievers, setRelievers] = useState({}); // { leaveId: 'reliever name' }
-
-  const relieverOptions = [
-    "Ravi Kumar",
-    "Sathish M",
-    "Arunraj D",
-    "Karthick S",
-  ];
-
   const fetchLeaves = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/leave/all");
+      const res = await axios.get('http://localhost:5000/api/leave/all');
       setLeaves(res.data);
     } catch (error) {
-      console.error("Error fetching leave requests:", error);
+      console.error('Error fetching leave requests:', error);
     }
   };
 
   const fetchSummary = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/leave/summary");
+      const res = await axios.get('http://localhost:5000/api/leave/summary');
       setSummary(res.data);
     } catch (err) {
-      console.error("Error fetching summary:", err);
+      console.error('Error fetching summary:', err);
     }
   };
 
@@ -44,41 +37,64 @@ const AdminPanelPage = () => {
     fetchSummary();
   }, []);
 
-  const updateStatus = async (id, newStatus) => {
-  const reliever = relievers[id] || ''; // Get selected reliever or fallback to empty string
+  // ✅ Export to Excel
+  const handleExportExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(leaves.map(leave => ({
+      Employee: leave.fullName,
+      Route: `${leave.routeFrom} → ${leave.routeTo}`,
+      Dates: `${new Date(leave.fromDate).toLocaleDateString()} - ${new Date(leave.toDate).toLocaleDateString()}`,
+      Type: leave.leaveType,
+      Reason: leave.reason || '',
+      Reliever: leave.reliever || '',
+      Status: leave.status,
+    })));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Leave Report');
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const fileData = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    saveAs(fileData, 'Leave_Report.xlsx');
+  };
 
-  if (newStatus === 'Approved' && !reliever) {
-    alert('Please select a reliever before approving.');
-    return;
-  }
-
-  // 👇 Add this line to debug what you're sending to the backend
-  console.log('Sending to backend:', {
-    status: newStatus,
-    reliever: newStatus === 'Approved' ? reliever : '',
-  });
-
-  try {
-    await axios.patch(`http://localhost:5000/api/leave/${id}/status`, {
-      status: newStatus,
-      reliever: newStatus === 'Approved' ? reliever : '', // Only send reliever for Approved
+  // ✅ Export to PDF
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text('TNSTC Leave Report', 14, 10);
+    autoTable(doc, {
+      startY: 20,
+      head: [['Employee', 'Route', 'Dates', 'Type', 'Reason', 'Reliever', 'Status']],
+      body: leaves.map((leave) => [
+        leave.fullName,
+        `${leave.routeFrom} → ${leave.routeTo}`,
+        `${new Date(leave.fromDate).toLocaleDateString()} - ${new Date(leave.toDate).toLocaleDateString()}`,
+        leave.leaveType,
+        leave.reason || '',
+        leave.reliever || '',
+        leave.status
+      ]),
     });
-
-    fetchLeaves();
-    fetchSummary();
-  } catch (error) {
-    console.error('Error updating status:', error);
-    alert('Failed to update leave. Please try again.');
-  }
-};
-
+    doc.save('Leave_Report.pdf');
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-6xl mx-auto bg-white shadow-xl rounded-xl p-6">
-        <h2 className="text-3xl font-bold text-indigo-600 mb-6 text-center">
-          Admin Panel
-        </h2>
+        <h2 className="text-3xl font-bold text-indigo-600 mb-6 text-center">Admin Panel</h2>
+
+        {/* Export Buttons */}
+        <div className="flex justify-end gap-4 mb-4">
+          <button
+            onClick={handleExportExcel}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow"
+          >
+            Export to Excel
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow"
+          >
+            Export to PDF
+          </button>
+        </div>
 
         {/* Analytics Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 text-white text-center">
@@ -115,73 +131,32 @@ const AdminPanelPage = () => {
                   <th className="p-2">Reason</th>
                   <th className="p-2">Reliever</th>
                   <th className="p-2">Status</th>
-                  <th className="p-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {leaves.map((leave) => (
-                  <tr key={leave._id} className="border-t text-center">
+                  <tr key={leave._id} className="text-center border-t">
                     <td className="p-2">{leave.fullName}</td>
+                    <td className="p-2">{leave.routeFrom} → {leave.routeTo}</td>
                     <td className="p-2">
-                      {leave.routeFrom} → {leave.routeTo}
-                    </td>
-                    <td className="p-2">
-                      {new Date(leave.fromDate).toLocaleDateString()} -{" "}
+                      {new Date(leave.fromDate).toLocaleDateString()} -{' '}
                       {new Date(leave.toDate).toLocaleDateString()}
                     </td>
                     <td className="p-2">{leave.leaveType}</td>
-                    <td className="p-2">{leave.reason || "—"}</td>
-                    <td className="p-2">
-                      {leave.status === "Pending" ? (
-                        <select
-                          value={relievers[leave._id] || ""}
-                          onChange={(e) =>
-                            setRelievers({
-                              ...relievers,
-                              [leave._id]: e.target.value,
-                            })
-                          }
-                          className="border rounded px-2 py-1 text-sm"
-                        >
-                          <option value="">Select</option>
-                          {relieverOptions.map((name) => (
-                            <option key={name} value={name}>
-                              {name}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-sm text-gray-700">
-                          {leave.reliever || "—"}
-                        </span>
-                      )}
-                    </td>
+                    <td className="p-2">{leave.reason || '—'}</td>
+                    <td className="p-2">{leave.reliever || '—'}</td>
                     <td className="p-2">
                       <span
                         className={`px-2 py-1 rounded text-white text-sm ${
-                          leave.status === "Approved"
-                            ? "bg-green-500"
-                            : leave.status === "Rejected"
-                            ? "bg-red-500"
-                            : "bg-yellow-500"
+                          leave.status === 'Approved'
+                            ? 'bg-green-500'
+                            : leave.status === 'Rejected'
+                            ? 'bg-red-500'
+                            : 'bg-yellow-500'
                         }`}
                       >
                         {leave.status}
                       </span>
-                    </td>
-                    <td className="p-2 space-x-2">
-                      <button
-                        onClick={() => updateStatus(leave._id, "Approved")}
-                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => updateStatus(leave._id, "Rejected")}
-                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                      >
-                        Reject
-                      </button>
                     </td>
                   </tr>
                 ))}
