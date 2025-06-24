@@ -45,6 +45,20 @@ const LeaveHistoryPage = () => {
     }
   };
 
+  const handleCancelLeave = async (id) => {
+    const confirmCancel = window.confirm('Are you sure you want to cancel this leave?');
+    if (!confirmCancel) return;
+
+    try {
+      await axios.patch(`http://localhost:5000/api/leave/${id}/cancel`);
+      toast.success('Leave cancelled successfully');
+      fetchLeaves(userId);
+    } catch (error) {
+      console.error('Error cancelling leave:', error);
+      toast.error('Failed to cancel leave');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-5xl mx-auto bg-white shadow-xl rounded-xl p-6">
@@ -91,6 +105,7 @@ const LeaveHistoryPage = () => {
                   <th className="p-3">Status</th>
                   <th className="p-3">Reason</th>
                   <th className="p-3">Reliever</th>
+                  <th className="p-3">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,6 +124,8 @@ const LeaveHistoryPage = () => {
                             ? 'bg-green-600'
                             : leave.status === 'Rejected'
                             ? 'bg-red-500'
+                            : leave.status === 'Cancelled'
+                            ? 'bg-gray-400'
                             : 'bg-yellow-500'
                         }`}
                       >
@@ -117,6 +134,16 @@ const LeaveHistoryPage = () => {
                     </td>
                     <td className="p-3 break-words">{leave.reason || '—'}</td>
                     <td className="p-3">{leave.reliever || '—'}</td>
+                    <td className="p-3">
+                      {leave.status === 'Pending' && (
+                        <button
+                          onClick={() => handleCancelLeave(leave._id)}
+                          className="text-white bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-sm"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
