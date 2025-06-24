@@ -105,6 +105,7 @@ const LeaveHistoryPage = () => {
                   <th className="p-3">Status</th>
                   <th className="p-3">Reason</th>
                   <th className="p-3">Reliever</th>
+                  <th className="p-3">Rejection Reason</th>
                   <th className="p-3">Action</th>
                 </tr>
               </thead>
@@ -134,6 +135,7 @@ const LeaveHistoryPage = () => {
                     </td>
                     <td className="p-3 break-words">{leave.reason || '—'}</td>
                     <td className="p-3">{leave.reliever || '—'}</td>
+                    <td className="p-3">{leave.status === 'Rejected' ? leave.rejectionReason || '—' : '—'}</td>
                     <td className="p-3">
                       {leave.status === 'Pending' && (
                         <button

@@ -16,9 +16,13 @@ const AdminPanelPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
-  // User popup
   const [selectedUser, setSelectedUser] = useState(null);
   const [userStats, setUserStats] = useState(null);
+
+  useEffect(() => {
+    fetchLeaves();
+    fetchSummary();
+  }, []);
 
   const fetchLeaves = async () => {
     try {
@@ -26,7 +30,7 @@ const AdminPanelPage = () => {
       setLeaves(res.data);
       setFilteredLeaves(res.data);
     } catch (error) {
-      console.error('Error fetching leave requests:', error);
+      console.error('Error fetching leaves:', error);
     }
   };
 
@@ -53,11 +57,6 @@ const AdminPanelPage = () => {
   };
 
   useEffect(() => {
-    fetchLeaves();
-    fetchSummary();
-  }, []);
-
-  useEffect(() => {
     let filtered = leaves;
 
     if (searchTerm) {
@@ -74,7 +73,7 @@ const AdminPanelPage = () => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, leaves]);
 
-  const updateStatus = async (id, newStatus) => {
+  const updateStatus = async (id, newStatus, reason = '') => {
     const reliever = relievers[id];
 
     if (newStatus === 'Approved' && !reliever) {
@@ -86,6 +85,7 @@ const AdminPanelPage = () => {
       await axios.patch(`http://localhost:5000/api/leave/${id}/status`, {
         status: newStatus,
         reliever: newStatus === 'Approved' ? reliever : '',
+        rejectionReason: newStatus === 'Rejected' ? reason : '',
       });
 
       fetchLeaves();
@@ -100,9 +100,7 @@ const AdminPanelPage = () => {
     const data = filteredLeaves.map((leave) => ({
       Name: leave.fullName,
       Route: `${leave.routeFrom} → ${leave.routeTo}`,
-      Dates: `${new Date(leave.fromDate).toLocaleDateString()} - ${new Date(
-        leave.toDate
-      ).toLocaleDateString()}`,
+      Dates: `${new Date(leave.fromDate).toLocaleDateString()} - ${new Date(leave.toDate).toLocaleDateString()}`,
       Type: leave.leaveType,
       Reason: leave.reason,
       Status: leave.status,
@@ -246,7 +244,10 @@ const AdminPanelPage = () => {
                         Approve
                       </button>
                       <button
-                        onClick={() => updateStatus(leave._id, 'Rejected')}
+                        onClick={() => {
+                          const reason = prompt('Enter rejection reason:');
+                          if (reason) updateStatus(leave._id, 'Rejected', reason);
+                        }}
                         className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
                       >
                         Reject
@@ -296,7 +297,6 @@ const AdminPanelPage = () => {
             />
             <h3 className="text-lg font-bold">{selectedUser.fullName}</h3>
             <p className="text-sm text-gray-600 mb-4 capitalize">{selectedUser.role}</p>
-
             <div className="text-left space-y-1 text-sm">
               <p>Total Applied: <strong>{userStats.totalApplied}</strong></p>
               <p>Approved: <strong>{userStats.approved}</strong></p>
